@@ -1,6 +1,6 @@
 # refactoring-tools
 
-Refactoring tool designed to assist refactoring.
+Tool designed to assist refactoring.
 
 ## install
 
@@ -18,4 +18,10 @@ Setup your refactoring-tools bindings like:
 
 ```emacs-lisp
 (global-set-key (kbd "C-c C-r") 'refactoring-tools-run)
+```
+
+or...
+
+```emacs-lisp
+(global-set-key (kbd "S-r") 'refactoring-tools-run)
 ```

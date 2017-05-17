@@ -14,24 +14,28 @@
 
 ;;; Code:
 
-(defun point-is-js-function-at ()
+(defun rt-js--is-token-function (token)
+  "Check if the TOKEN is a 'function'."
+  (string= "function" token))
+
+(defun rt-js--is-token-export (token)
+  "Check if the TOKEN is 'export'."
+  (string= "export" token))
+
+(defun rt-js--is-token-var (token)
+  "Check if the TOKEN is 'var'."
+  (string= "var" token))
+
+(defun rt-js--point-is-js-function-at ()
   "Is the current POINT in a function context?"
   (let ((w (thing-at-point 'word)))
     (progn
-      (print w)
       (cond
-       ((string= "function" w) t)
-       ((string= "export" w) (progn
-                               (right-word)
-                               (point-is-js-function-at)))
+       ((rt-js--is-token-function w) t)
+       ((rt-js--is-token-export w) (progn
+                                     (right-word)
+                                     (rt-js--point-is-js-function-at)))
        (t nil)))))
-
-(defun rt-js-context-at-point ()
-  "Find the context at the current point."
-  (let ((wd-at-point (thing-at-point 'word)))
-    (cond ((string= "function" wd-at-point) 'fn)
-          ((string= "var" wd-at-point) 'var)
-          (t nil))))
 
 (defun rt-js-read-function-scope ()
   "Try to read a function."
@@ -59,6 +63,23 @@
       (setq end-point (point)))
     end-point))
 
+(defun rt-js-detect ()
+  "Detect what expression/keyword is on cursor point."
+  (let ((current-point (point)))
+    (progn
+
+      (save-excursion
+        (if (rt-js--point-is-js-function-at)
+            `("fn" ,current-point)
+          (let ((w (thing-at-point 'word t)))
+              (cond
+               ((rt-js--is-token-var w) `("var" ,current-point))
+               ((not (null w)) (progn
+                                 (save-excursion
+                                   (left-word)
+                                  `("word" ,current-point))))
+               (t nil))))))))
+
 (defun rt-js-at-point (current-buffer point)
   "Find the context on the CURRENT-BUFFER for refactoring at POINT."
   (with-current-buffer current-buffer
@@ -70,15 +91,6 @@
                    .
                    rt-js-fn-options)))
               (t nil)))))
-
-(defun rt-js-detect ()
-  "Detect what expression/keyword is on cursor point."
-  (let ((current-point (point)))
-    (save-excursion
-      (cond ((or (string= "(" (string (char-after (point))))
-                 (point-is-js-function-at))
-             `("fn" ,current-point))
-            (t nil)))))
 
 (defun rt-js-apply-move ()
   "Just move the function elsewhere."
@@ -143,6 +155,9 @@
   (insert " ")
   (rt-quit)))
 
+(defun rt-js-rename-function ()
+  "Rename a function.")
+
 (defun rt-js-fn-options ()
   "Return the javascript options for refactoring."
   (let ((available-commands-list
@@ -165,7 +180,11 @@
            ((key . "e")
             (title . "Toggle export")
             (imm . t)
-            (command . rt-js-toggle-export)))))
+            (command . rt-js-toggle-export))
+           ((key . "r")
+            (title . "Rename function")
+            (imm . t)
+            (command . rt-js-rename-function)))))
     `((header . "Refactoring function\n")
       (commands . ,available-commands-list))))
 

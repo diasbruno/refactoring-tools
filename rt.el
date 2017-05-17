@@ -14,39 +14,13 @@
 
 ;;; Code:
 
-(cl-eval-when (load eval)
-  (require 'rt-popup)
-  (require 'rt-javascript))
-
-(defvar rt-mode-enabled nil
-  "Check if refactoring mode is enabled.")
-
-(defvar rt-keymap nil
-  "Keymap while refactoring is active.")
-
-(defvar rt--current-buffer nil
-  ".")
-
-(defvar rt--list-langs "js"
-  ".")
-
-(defvar rt-active-region nil
-  "Available stack of regions.")
-
-(defvar rt-commit-function nil
-  "Function to execute when commiting.")
-
-(defun rt--dump-state ()
-  "."
-  (print "-- rt: dump state --")
-  (print rt-mode-enabled)
-  (print rt-keymap)
-  (print rt--current-buffer)
-  (print rt--list-langs))
+(require 'rt-state)
+(require 'rt-popup)
+(require 'rt-javascript)
 
 (defface rt-region-face
   '((t :inherit region))
-  "The face used for fake regions"
+  "The face used for fake regions."
   :group 'rt)
 
 (defun string-on-range (start end)
@@ -63,8 +37,8 @@
 
 (defun rt--toggle-mode ()
   "Enable refactoring mode when a command is issued."
-  (rt-mode (not rt-mode-enabled))
-  (setq rt-mode-enabled (not rt-mode-enabled)))
+  (rt-mode (not rt--mode-enabled))
+  (setq rt-mode-enabled (not rt--mode-enabled)))
 
 (defun rt-point-in-buffer-limit (point)
   "Limit POINT to the end of the buffer."
