@@ -10,11 +10,13 @@
 
 ;; This file is NOT part of GNU Emacs.
 
+;;; Commentary:
+
 ;;; Code:
 
 (cl-eval-when (load eval)
-  (require 'rt-internal)
-  (require 'rt-popup))
+  (require 'rt-popup)
+  (require 'rt-javascript))
 
 (defvar rt-mode-enabled nil
   "Check if refactoring mode is enabled.")
@@ -22,11 +24,25 @@
 (defvar rt-keymap nil
   "Keymap while refactoring is active.")
 
-(defvar rt--current-buffer nil)
+(defvar rt--current-buffer nil
+  ".")
 
-(defvar rt--list-langs "js")
+(defvar rt--list-langs "js"
+  ".")
 
-;;; Faces:
+(defvar rt-active-region nil
+  "Available stack of regions.")
+
+(defvar rt-commit-function nil
+  "Function to execute when commiting.")
+
+(defun rt--dump-state ()
+  "."
+  (print "-- rt: dump state --")
+  (print rt-mode-enabled)
+  (print rt-keymap)
+  (print rt--current-buffer)
+  (print rt--list-langs))
 
 (defface rt-region-face
   '((t :inherit region))
@@ -34,10 +50,10 @@
   :group 'rt)
 
 (defun string-on-range (start end)
-  "Returns a string on a range without properties."
+  "Return a string on a range from START to END without properties."
   (buffer-substring-no-properties start end))
 
-(defun rt--apply-move ()
+(defun rt-apply-move ()
   "Apply the move."
   (let* ((start (overlay-start rt-active-region))
          (end (overlay-end rt-active-region))
@@ -46,32 +62,47 @@
     (insert region-string)))
 
 (defun rt--toggle-mode ()
-  "Enable refactoring mode when a command is issued.
-This is the minor mode for warning the user what is going on."
-  (if (not rt-mode-enabled)
-      (progn
-        (rt-mode)
-        (setq rt-mode-enabled t))
-    (progn
-      (rt-mode 0)
-      (setq rt-mode-enabled nil))))
+  "Enable refactoring mode when a command is issued."
+  (rt-mode (not rt-mode-enabled))
+  (setq rt-mode-enabled (not rt-mode-enabled)))
+
+(defun rt-point-in-buffer-limit (point)
+  "Limit POINT to the end of the buffer."
+  (if (< point (point-max))
+      point
+    (point-max)))
+
+(defun rt-create-region (start end)
+  "Create a regions-like on the point START and END."
+  (let ((overlay (make-overlay start end nil nil t)))
+    (overlay-put overlay 'face 'rt-region-face)
+    (overlay-put overlay 'type 'additional-region)
+    overlay))
+
+(defun rt-run-at-point (language current-buffer current-point)
+  "From a selected LANGUAGE in a CURRENT-BUFFER in the CURRENT-POINT."
+  (let ((at-point-fn (intern (concat "rt-" language "-at-point"))))
+    (if at-point-fn
+        (funcall at-point-fn current-buffer current-point)
+      nil)))
 
 ;;;###autoload
 (defun rt-commit-change ()
-  "Apply changes to code."
+  "Apply change to code."
   (interactive)
   (when rt-commit-function
     (funcall rt-commit-function)))
 
 ;;;###autoload
 (defun rt-run ()
+  "Start refactoring."
   (interactive)
   (if rt-commit-function
       (rt-commit-change)
     ;; run the function for language 'rt--*-at-point'
-    (let ((can-refactor (rt--run-at-point rt--list-langs
-                                          (current-buffer)
-                                          (point))))
+    (let ((can-refactor (rt-run-at-point rt--list-langs
+                                         (current-buffer)
+                                         (point))))
       (if can-refactor
           (progn
             (setq rt--current-buffer (current-buffer))

@@ -1,4 +1,4 @@
-;;; rt.el --- refactoring tools.  -*- lexical-binding: t -*-
+;;; rt-popup.el --- refactoring tools.  -*- lexical-binding: t -*-
 
 ;; Author: Bruno Dias <dias.h.bruno@gmail.com>
 ;; Version: 0.1.0
@@ -9,6 +9,8 @@
 ;; See license.md.
 
 ;; This file is NOT part of GNU Emacs.
+
+;;; Commentary:
 
 ;;; Code:
 
@@ -21,11 +23,11 @@
 (defvar rt-popup-keymap nil
   "Popup keymap.")
 
-(defun rt--set-cmd (fn imm)
-  "Set command to execute."
+(defun rt--set-cmd (fn immediate)
+  "Set FN to be executed IMMEDIATE or not."
   (lambda ()
     (interactive)
-    (if imm
+    (if immediate
         (progn
           (set-buffer rt--current-buffer)
           (funcall fn))
@@ -34,19 +36,20 @@
         (rt-close-popup)))))
 
 (defun rt--create-bind (key)
-  "Create a bind for a key."
+  "Create a bind for a KEY."
   (let ((k (assoc 'key key))
         (f (assoc 'command key))
         (imm (assoc 'imm key)))
-    (local-set-key (cdr k) (rt--set-cmd (cdr f) (cdr imm)))))
+    (local-set-key (cdr k)
+                   (rt--set-cmd (cdr f) (cdr imm)))))
 
 (defun rt--create-binds (cmds quit)
-  "Create all local key bindings for the major mode."
+  "Create all local key bindings for CMDS, including QUIT."
   (mapc 'rt--create-bind (cdr cmds))
   (local-set-key "q" quit))
 
 (defun rt--menu-item (item)
-  "Create a menu entry."
+  "Create a menu ITEM."
   (concat " "
           (propertize (cdr (assoc 'key item))
                       'face
@@ -55,7 +58,7 @@
           (cdr (assoc 'title item))))
 
 (defun rt--create-popup-menu (cmds)
-  "Create the popup menu."
+  "Create the popup menu for all CMDS."
   (let ((h (assoc 'header cmds))
         (cms (assoc 'commands cmds)))
     (concat (propertize (cdr h) 'face 'font-lock-keyword-face)
@@ -64,13 +67,13 @@
                        (cdr cms) ""))))
 
 (defun rt--display-popup (buffer)
-  "Display the popup."
+  "Display the popup BUFFER."
   (set-buffer buffer)
   (setq rt-popup-buffer buffer)
   (pop-to-buffer buffer))
 
 (defun rt-open-popup (options quit)
-  "Display the refactoring options."
+  "Display the refactoring OPTIONS and QUIT."
   (unless rt-popup-buffer
     (split-window-vertically (floor (* 0.68 (window-height))))
     (let ((bf (get-buffer-create rt-buffer-name)))
@@ -78,7 +81,6 @@
       (insert (rt--create-popup-menu options))
       (rt-popup-mode)
       (rt--create-binds (assoc 'commands options) quit)
-
       (setq rt-popup-keymap (make-sparse-keymap))
       (define-key rt-popup-keymap (kbd "C-g") quit))))
 
@@ -98,4 +100,4 @@
   (setq buffer-read-only t))
 
 (provide 'rt-popup)
-;;; rt.el ends here
+;;; rt-popup.el ends here
