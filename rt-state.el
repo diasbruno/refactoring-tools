@@ -21,16 +21,25 @@
   "Keymap while refactoring is active.")
 
 (defvar rt--current-buffer nil
-  ".")
+  "Current buffer.")
 
 (defvar rt--list-langs "js"
   "List of supported languages.")
 
-(defvar rt-active-region nil
+(defvar rt--active-region nil
   "Available stack of regions.")
 
-(defvar rt-commit-function nil
+(defvar rt--commit-function nil
   "Function to execute when commiting.")
+
+(defun rt--save-current-buffer ()
+  "Save the current buffer."
+  (setq rt--current-buffer (current-buffer)))
+
+(defun rt--save-active-region (refactoring-item)
+  "Save the current active region for REFACTORING-ITEM."
+  (when refactoring-item
+   (setq rt--active-region refactoring-item)))
 
 (defun rt--dump-state ()
   "."
@@ -39,7 +48,6 @@
   (print rt-keymap)
   (print rt--current-buffer)
   (print rt--list-langs))
-
 
 (provide 'rt-state)
 ;;; rt-state.el ends here

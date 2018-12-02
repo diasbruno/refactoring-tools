@@ -14,6 +14,8 @@
 
 ;;; Code:
 
+(require 'rt-state)
+
 (defvar rt-buffer-name "*refactoring-popup*"
   "Default buffer name.")
 
@@ -32,7 +34,7 @@
           (set-buffer rt--current-buffer)
           (funcall fn))
       (progn
-        (setq rt-commit-function fn)
+        (setq rt--commit-function fn)
         (rt-close-popup)))))
 
 (defun rt--create-bind (key)

@@ -14,6 +14,8 @@
 
 ;;; Code:
 
+(require 'rt)
+
 (defun rt-js--is-token-function (token)
   "Check if the TOKEN is a 'function'."
   (string= "function" token))
@@ -22,9 +24,13 @@
   "Check if the TOKEN is 'export'."
   (string= "export" token))
 
-(defun rt-js--is-token-var (token)
+nn(defun rt-js--is-token-var (token)
   "Check if the TOKEN is 'var'."
   (string= "var" token))
+
+(defun rt-js--is-token-class (token)
+  "Check if TOKEN is 'class'."
+  (string= "class" token))
 
 (defun rt-js--point-is-js-function-at ()
   "Is the current POINT in a function context?"
@@ -32,9 +38,10 @@
     (progn
       (cond
        ((rt-js--is-token-function w) t)
-       ((rt-js--is-token-export w) (progn
-                                     (right-word)
-                                     (rt-js--point-is-js-function-at)))
+       ((rt-js--is-token-export w)
+        (progn
+          (right-word)
+          (rt-js--point-is-js-function-at)))
        (t nil)))))
 
 (defun rt-js-read-function-scope ()
@@ -63,34 +70,80 @@
       (setq end-point (point)))
     end-point))
 
+(defun rt-js-read-scope (for)
+  "Read scope FOR."
+  (cond
+   ((string= for "fn") (rt-js-read-function-scope))
+   (t nil)))
+
 (defun rt-js-detect ()
   "Detect what expression/keyword is on cursor point."
-  (let ((current-point (point)))
-    (progn
+  (save-excursion
+    (let ((w (thing-at-point 'word t)))
+      (cond
+       ((rt-js--is-token-class w) "class")
+       ((rt-js--is-token-var w) "var")
+       ((rt-js--point-is-js-function-at) "fn")
+       (t nil)))))
 
-      (save-excursion
-        (if (rt-js--point-is-js-function-at)
-            `("fn" ,current-point)
-          (let ((w (thing-at-point 'word t)))
-              (cond
-               ((rt-js--is-token-var w) `("var" ,current-point))
-               ((not (null w)) (progn
-                                 (save-excursion
-                                   (left-word)
-                                  `("word" ,current-point))))
-               (t nil))))))))
+(defun rt-js-fn-options ()
+  "Return the javascript options for refactoring."
+  (let ((available-commands-list
+         `(((key . "m")
+            (title . "Move")
+            (imm . nil)
+            (command . rt-js-apply-move))
+           ((key . "n")
+            (title . "Move anonymous")
+            (imm . nil)
+            (command . rt-js-apply-move-anonymous))
+           ((key . "a")
+            (title . "Turn into arrow function")
+            (imm . t)
+            (command . rt-js-rewrite-as-arrow-fn))
+           ((key . "f")
+            (title . "Turn into regular function")
+            (imm . t)
+            (command . rt-js-rewrite-as-regular-fn))
+           ((key . "e")
+            (title . "Toggle export")
+            (imm . t)
+            (command . rt-js-toggle-export))
+           ((key . "r")
+            (title . "Rename function")
+            (imm . t)
+            (command . rt-js-rename-function)))))
+    `((header . "Refactoring function\n")
+      (commands . ,available-commands-list))))
+
+(defun rt-js-create-class ()
+  "Create a new class."
+  (let ((name (read-string "Class name: "))
+        (current-point (point)))
+    (insert (concatenate 'string "class " name " {" "\n"))
+    (insert "}")
+    (rt-quit)))
+
+(defun rt-js-creational-options ()
+  "Return the javascript options for refactoring."
+  (let ((available-commands-list
+         `(((key . "c")
+            (title . "New class")
+            (imm . t)
+            (command . rt-js-create-class)))))
+    `((header . "Create\n")
+      (commands . ,available-commands-list))))
 
 (defun rt-js-at-point (current-buffer point)
-  "Find the context on the CURRENT-BUFFER for refactoring at POINT."
+  "Find the context on the CURRENT-BUFFER for refactoring at POINT.
+Returns a pair of with the current region or nil, and the options."
   (with-current-buffer current-buffer
     (let ((found (rt-js-detect)))
-        (cond ((string= (car found) "fn")
-               (progn
-                 `(,(rt-create-region point
-                                      (rt-js-read-function-scope))
-                   .
-                   rt-js-fn-options)))
-              (t nil)))))
+      (if (or (string= found "fn") (string= found "var"))
+          `(,(rt-create-region
+              point
+              (rt-js-read-scope found)) . rt-js-fn-options)
+        `(nil . rt-js-creational-options)))))
 
 (defun rt-js-apply-move ()
   "Just move the function elsewhere."
@@ -101,8 +154,8 @@
 (defun rt-js-apply-move-anonymous ()
   "Will give a name to function and move elsewhere."
   (let ((fn-name (read-string "Funtion name: "))
-        (start (overlay-start rt-active-region))
-        (end (overlay-end rt-active-region)))
+        (start (overlay-start rt--active-region))
+        (end (overlay-end rt--active-region)))
     ;; this will let the point where the function was.
     (rt-apply-move)
     ;; insert the new name in the function and move back the point
@@ -157,36 +210,6 @@
 
 (defun rt-js-rename-function ()
   "Rename a function.")
-
-(defun rt-js-fn-options ()
-  "Return the javascript options for refactoring."
-  (let ((available-commands-list
-         `(((key . "m")
-            (title . "Move")
-            (imm . nil)
-            (command . rt-js-apply-move))
-           ((key . "n")
-            (title . "Move anonymous")
-            (imm . nil)
-            (command . rt-js-apply-move-anonymous))
-           ((key . "a")
-            (title . "Turn into arrow function")
-            (imm . t)
-            (command . rt-js-rewrite-as-arrow-fn))
-           ((key . "f")
-            (title . "Turn into regular function")
-            (imm . t)
-            (command . rt-js-rewrite-as-regular-fn))
-           ((key . "e")
-            (title . "Toggle export")
-            (imm . t)
-            (command . rt-js-toggle-export))
-           ((key . "r")
-            (title . "Rename function")
-            (imm . t)
-            (command . rt-js-rename-function)))))
-    `((header . "Refactoring function\n")
-      (commands . ,available-commands-list))))
 
 (provide 'rt-javascript)
 ;;; rt-javascript.el ends here

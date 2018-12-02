@@ -16,7 +16,6 @@
 
 (require 'rt-state)
 (require 'rt-popup)
-(require 'rt-javascript)
 
 (defface rt-region-face
   '((t :inherit region))
@@ -29,8 +28,8 @@
 
 (defun rt-apply-move ()
   "Apply the move."
-  (let* ((start (overlay-start rt-active-region))
-         (end (overlay-end rt-active-region))
+  (let* ((start (overlay-start rt--active-region))
+         (end (overlay-end rt--active-region))
          (region-string (string-on-range start end)))
     (delete-region start end)
     (insert region-string)))
@@ -64,14 +63,14 @@
 (defun rt-commit-change ()
   "Apply change to code."
   (interactive)
-  (when rt-commit-function
-    (funcall rt-commit-function)))
+  (when rt--commit-function
+    (funcall rt--commit-function)))
 
 ;;;###autoload
 (defun rt-run ()
   "Start refactoring."
   (interactive)
-  (if rt-commit-function
+  (if rt--commit-function
       (rt-commit-change)
     ;; run the function for language 'rt--*-at-point'
     (let ((can-refactor (rt-run-at-point rt--list-langs
@@ -79,8 +78,8 @@
                                          (point))))
       (if can-refactor
           (progn
-            (setq rt--current-buffer (current-buffer))
-            (setq rt-active-region (car can-refactor))
+            (rt--save-current-buffer)
+            (rt--save-active-region (car can-refactor))
             (rt--toggle-mode)
             (rt-open-popup (funcall (cdr can-refactor)) 'rt-quit))
         (message "There are no actions at this point")))))
@@ -89,13 +88,13 @@
 (defun rt-quit ()
   "End refactoring or quit when impossible or no action to do."
   (interactive)
-  (when rt-active-region
-    (delete-overlay rt-active-region)
+  (when rt--active-region
+    (delete-overlay rt--active-region)
     (deactivate-mark))
   (rt--toggle-mode)
   (rt-close-popup)
-  (setq rt-commit-function nil)
-  (setq rt-active-region nil)
+  (setq rt--commit-function nil)
+  (setq rt--active-region nil)
   (setq rt--current-buffer nil))
 
 (define-minor-mode rt-mode
